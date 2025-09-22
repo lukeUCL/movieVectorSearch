@@ -12,17 +12,39 @@ class Database:
             self.collection = self.db['films']
             self.profiles = self.db['profiles']
             
+            self._ensure_vector_search_index()
+            
             try:
                 total_movies = self.collection.count_documents({})
                 enriched_movies = self.collection.count_documents({'processing_status': 'enriched'})
-                logger.info(f"📊 Database: {total_movies:,} total movies, {enriched_movies:,} enriched")
+                logger.info(f"database: {total_movies:,} total movies, {enriched_movies:,} enriched")
             except Exception as e:
-                logger.warning(f"⚠️ Database connection failed: {e}")
-                logger.info("🔄 App will start anyway - database operations may fail")
+                logger.warning(f"Database connection failed: {e}")
                 
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
             raise
+    
+    def _ensure_vector_search_index(self):
+        try:
+            # Check if vector search index exists by trying to use it
+            test_pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": "vector_search_index",
+                        "path": "embedding",
+                        "queryVector": [0.0] * 1536,  
+                        "numCandidates": 1,
+                        "limit": 1
+                    }
+                }
+            ]
+            
+            list(self.collection.aggregate(test_pipeline))
+            logger.info(" Vector search index exists")
+            
+        except Exception as e:
+            logger.warning(f"Vector search index not found: {e}")
     
     def search_movies(self, query_filter, limit=20, skip=0):
         try:

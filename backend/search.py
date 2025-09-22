@@ -23,7 +23,18 @@ class SearchService:
             movies = self.db.search_movies(base_filter, limit=limit)
             return [self._format_movie_result(movie) for movie in movies]
         
-        # Pure vector search for all queries
+        # Try MongoDB Atlas vector search first
+        try:
+            query_embedding = self.ai.create_embedding(query)
+            if query_embedding:
+                results = self.ai.atlas_vector_search(query_embedding, limit, base_filter, self.db)
+                if results:
+                    logger.info(f"Atlas search completed, {len(results)} results")
+                    return [self._format_movie_result(movie) for movie in results]
+        except Exception as e:
+            logger.warning(f"Atlas search failed: {e}")
+        
+        # Fallback to manual vector search
         movies = self.db.search_movies(base_filter, limit=limit*3)
         if movies:
             movies = self.ai.manual_vector_search(query, movies)[:limit]

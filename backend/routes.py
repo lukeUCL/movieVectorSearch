@@ -15,15 +15,13 @@ def register_routes(app, ai_provider='openai'):
         data = request.get_json()
         query = data.get('query', '').strip()
         limit = data.get('limit', 20)
-        
-        logger.info(f"🔍 Search request: '{query}' (limit: {limit})")
-        
+                
         try:
             movies = search_service.search_movies(query, limit)
             
-            logger.info(f"📊 Found {len(movies)} movies")
+            logger.info(f"Found {len(movies)} movies")
             return jsonify({
-                'results': movies,  # Frontend expects 'results' not 'movies'
+                'results': movies, 
                 'total': len(movies),
                 'query': query,
                 'provider': ai_provider
@@ -47,22 +45,18 @@ def register_routes(app, ai_provider='openai'):
         except Exception as e:
             logger.error(f"Poster fetch failed: {e}")
             return jsonify({'error': str(e)}), 500
-    
-    @app.route('/api/trailer', methods=['POST'])
-    def get_trailer():
-        return jsonify({'youtube_id': None})
-    
+
     @app.route('/api/analyze-with-prompt', methods=['POST'])
     def analyze_with_prompt():
         try:
             data = request.get_json()
             prompt = data.get('prompt', '').strip()
-            movies = data.get('movies', [])  # Frontend sends movies array
+            movies = data.get('movies', []) 
             
             if not movies:
                 return jsonify({'error': 'Movies required'}), 400
             
-            logger.info(f"🎯 Personalized analysis request for: '{prompt}' with {len(movies)} movies")
+            logger.info(f"Personalized analysis request for: '{prompt}' with {len(movies)} movies")
             
             # Load user profile for personalized analysis
             profile_data = search_service.load_local_profile('movie_lover_001')
@@ -119,7 +113,6 @@ def register_routes(app, ai_provider='openai'):
                     'reason': 'Not enough movies for grouping'
                 })
             
-            # Simple genre-based grouping (you could enhance with AI)
             genres_map = {}
             for movie in movies:
                 for genre in movie.get('genres', []):
@@ -132,7 +125,7 @@ def register_routes(app, ai_provider='openai'):
             for genre, genre_movies in sorted(genres_map.items(), key=lambda x: len(x[1]), reverse=True):
                 if len(groups) >= max_groups:
                     break
-                if len(genre_movies) >= 2:  # At least 2 movies per group
+                if len(genre_movies) >= 2:  
                     groups.append({
                         'subtheme': f"{genre} films",
                         'movies': [movie.get('title', '') for movie in genre_movies],

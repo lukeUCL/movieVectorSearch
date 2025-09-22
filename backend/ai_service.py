@@ -56,6 +56,45 @@ class AIService:
             logger.error(f"Similarity computation failed: {e}")
             return []
     
+    def atlas_vector_search(self, query_embedding, limit, search_filter, db):
+        """Use MongoDB Atlas vector search"""
+        try:
+            pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": "vector_search_index",
+                        "path": "embedding",
+                        "queryVector": query_embedding,
+                        "numCandidates": min(limit * 50, 1000),
+                        "limit": limit,
+                        "filter": search_filter
+                    }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                        "title": 1,
+                        "year": 1,
+                        "description": 1,
+                        "genres": 1,
+                        "director": 1,
+                        "cast": {"$slice": ["$cast", 5]},
+                        "enrichment_response": 1,
+                        "structured_enrichment": 1,
+                        "ai_provider": 1,
+                        "score": {"$meta": "vectorSearchScore"}
+                    }
+                }
+            ]
+            
+            results = list(db.collection.aggregate(pipeline))
+            logger.info(f"🚀 Atlas vector search found {len(results)} results")
+            return results
+            
+        except Exception as e:
+            logger.warning(f"Atlas vector search failed: {e}")
+            return []
+
     def manual_vector_search(self, query, movies):
         query_embedding = self.create_embedding(query)
         if not query_embedding:
